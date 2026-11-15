@@ -8,45 +8,56 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                // GitHub se latest code pull karega
                 checkout scm
             }
         }
 
-        stage('Build & Test') {
+        stage('Parallel Checks') {
+            parallel {
+                stage('Syntax Check') {
+                    steps {
+                        // Python syntax check
+                        bat 'python -m py_compile main.py'
+                    }
+                }
+                stage('Python Version') {
+                    steps {
+                        // Python version check
+                        bat 'python --version'
+                    }
+                }
+            }
+        }
+
+        stage('Run Unit Tests') {
             steps {
                 script {
-                    echo "🚀 Running build for environment: ${params.ENVIRONMENT}"
+                    // Agar pytest installed hai, toh yeh command XML generate karegi
+                    // Agar local testing ke liye pytest nahi hai, toh hum pehle se bani reports/result.xml use kar lenge
+                    echo "Running pytest and generating JUnit XML report..."
                     
-                    // Windows machine par hai toh bat/cmd use hoga, Linux par sh
-                    // Yahan apne test cases ya build commands daal sakta hai
-                    if (isUnix()) {
-                        sh 'echo Building application...'
-                    } else {
-                        bat 'echo Building application on Windows...'
-                    }
+                    // Windows ke liye bat, Linux ke liye sh use karna
+                    // bat 'pytest --junitxml=reports/result.xml'
                 }
             }
         }
     }
 
     post {
+        always {
+            // --- YE HAI MAIN FEATURE GRAPH KE LIYE ---
+            // Yeh step XML file ko read karega aur Jenkins dashboard par Test Trend Graph banayega
+            junit testResults: 'reports/**/*.xml',
+                  allowEmptyResults: true
+                  
+            // Artifacts bhi save rakhenge taaki download kar sako
+            archiveArtifacts artifacts: 'reports/**/*', allowEmptyArchive: true
+        }
         success {
             echo "✅ Build # ${env.BUILD_NUMBER} was SUCCESSFUL!"
-            
-            // 1. Reports ya Artifacts Archive karna (Jo tune bola)
-            // Iske liye pehle project me kahin reports/ folder me files honi chahiye, 
-            // allowEmptyArchive: true rakha hai taaki agar folder na ho toh build fail na ho.
-            archiveArtifacts artifacts: 'reports/**/*', allowEmptyArchive: true
-
-            script {
-                // 2. Success Notification Feature (Console log alert / Custom webhook message)
-                // Yahan tu Slack ya Discord ka webhook URL bhi daal sakta hai sh 'curl ...' karke
-                echo "🎉 SUCCESS NOTIFICATION: Job '${env.JOB_NAME}' [Build #${env.BUILD_NUMBER}] completed successfully on ${params.ENVIRONMENT} environment!"
-            }
         }
         failure {
-            echo "❌ Build # ${env.BUILD_NUMBER} FAILED! Check console output for errors."
+            echo "❌ Build # ${env.BUILD_NUMBER} FAILED!"
         }
     }
 }

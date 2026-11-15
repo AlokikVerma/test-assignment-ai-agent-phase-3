@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="JenkinsPipelineTests" tests="1" failures="0" errors="0" time="0.05">
+    <testsuite name="AutomatedSanityCheck" tests="1" failures="0" errors="0" skipped="0" time="0.05">
+        <testcase classname="tests.core" name="test_pipeline_sanity" time="0.05"/>
+    </testsuite>
+</testsuites>
